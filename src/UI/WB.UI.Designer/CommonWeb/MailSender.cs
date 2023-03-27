@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.Http;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -40,46 +41,26 @@ namespace WB.UI.Designer.CommonWeb
             }
 
             var config = this.settings.Value;
-            
-            using (var client = new SmtpClient())
-            {
-                client.Host = config.Host;
-                client.Port = config.Port;
-                client.Credentials = new NetworkCredential(
-                    config.Username,
-                    config.Password);
 
-                client.DeliveryMethod = SmtpDeliveryMethod.Network;
-                client.EnableSsl = config.EnableSSL;
+            var message = new MailMessage();
+            message.From = new MailAddress(config.From, config.Username);
+            message.To.Add(new MailAddress(email));
+            message.Subject = subject;
+            message.Body = htmlMessage;
+            message.IsBodyHtml = true;
 
-                if (this.settings.Value.UsePickupFolder)
-                {
-                    client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;
-                    client.PickupDirectoryLocation = this.settings.Value.PickupFolder;
 
-                    if (client.PickupDirectoryLocation.StartsWith("~"))
-                    {
-                        client.PickupDirectoryLocation = client.PickupDirectoryLocation.Replace("~", this.env.ContentRootPath);
-                        if (!System.IO.Directory.Exists(client.PickupDirectoryLocation))
-                        {
-                            System.IO.Directory.CreateDirectory(client.PickupDirectoryLocation);
-                        }
-                    }
-                    client.EnableSsl = false;
-                }
-                
-                var message = new MailMessage(
-                    to: email,
-                    from: config.From,
-                    subject: subject,
-                    body: htmlMessage
-                )
-                {
-                    IsBodyHtml = true
-                };
 
-                await client.SendMailAsync(message);
-            }
+
+            var client = new SmtpClient();
+            client.Host = config.Host;
+            client.Port = config.Port;
+            client.EnableSsl = config.EnableSSL;
+            client.Credentials = new NetworkCredential(
+            config.From,
+            config.Password);
+
+            await client.SendMailAsync(message);
         }
     }
 }
